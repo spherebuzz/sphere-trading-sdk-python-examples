@@ -77,7 +77,7 @@ def format_trade_snapshot(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) ->
       
                         
         unit_str = sphere_sdk_types_pb2.Unit.Name(trade_details.price.units).replace('UNIT_', '')                
-        unit_period_str = sphere_sdk_types_pb2.Unit.Name(trade_details.price.unit_period).replace('UNIT_PERIOD_', '')
+        unit_period_str = sphere_sdk_types_pb2.UnitPeriod.Name(trade_details.price.unit_period).replace('UNIT_PERIOD_', '')
 
         lines.append(
             f"    - ID: {trade_details.id} | "

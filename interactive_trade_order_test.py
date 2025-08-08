@@ -197,7 +197,7 @@ class GhostTrader:
             real_order_side = contract.side
             real_order_side_str = sphere_sdk_types_pb2.OrderSide.Name(real_order_side).replace('ORDER_SIDE_', '')
             real_order_price = Decimal(real_order.price.per_price_unit)
-            real_order_qty = Decimal(real_order.price.quantity) / 1000
+            real_order_qty = Decimal(real_order.price.quantity)
 
             logger.debug(
                 f"{log_prefix} Attempting to match: {real_order_side_str} {real_order_qty} @ {real_order_price} "

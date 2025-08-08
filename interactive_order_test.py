@@ -36,7 +36,9 @@ def on_order_event_received(order_data: sphere_sdk_types_pb2.OrderStacksDto):
     """
     test_logger.info("<<< Received Order Data Payload >>>")
 
-    event_type_str = sphere_sdk_types_pb2.TradeEventType.Name(order_data.event_type).replace('ORDER_STACKS_EVENT_TYPE', '')
+    event_type_str = sphere_sdk_types_pb2.OrderStacksEventType.Name(order_data.event_type).replace('ORDER_STACKS_EVENT_TYPE_', '')
+
+    print("Event Type: ", event_type_str)
 
     if event_type_str == 'SNAPSHOT':
         test_logger.info("Event Type: SNAPSHOT")
@@ -77,7 +79,7 @@ def format_order_snapshot(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto
                 interest_type_str = sphere_sdk_types_pb2.InterestType.Name(order.interest_type).replace('INTEREST_TYPE_', '')
                 tradability_str = sphere_sdk_types_pb2.Tradability.Name(order.tradability).replace('TRADABILITY_', '')                
                 unit_str = sphere_sdk_types_pb2.Unit.Name(order.price.units).replace('UNIT_', '')                
-                unit_period_str = sphere_sdk_types_pb2.Unit.Name(order.price.unit_period).replace('UNIT_PERIOD_', '')
+                unit_period_str = sphere_sdk_types_pb2.UnitPeriod.Name(order.price.unit_period).replace('UNIT_PERIOD_', '')
 
                 lines.append(
                     f"    - ID: {order.id} | "
