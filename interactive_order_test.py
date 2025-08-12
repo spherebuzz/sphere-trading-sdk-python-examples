@@ -44,14 +44,20 @@ def on_order_event_received(order_data: sphere_sdk_types_pb2.OrderStacksDto):
         test_logger.info("Event Type: SNAPSHOT")
         snapshot_body = order_data.body
         if snapshot_body:
-            pretty_details = format_order_snapshot(snapshot_body)
+            pretty_details = format_order_stacks(snapshot_body)
             test_logger.info(f"\n{pretty_details}")
         else:
             test_logger.info("Order snapshot is empty.")
+    else:
+        test_logger.info(f"Event Type: {event_type_str}")
+        delta_body = order_data.body
+        if delta_body:
+            pretty_details = format_order_stacks(delta_body)
+            test_logger.info(f"\n{pretty_details}")
 
     test_logger.info("---------------------------------")
 
-def format_order_snapshot(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto]) -> str:
+def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto]) -> str:
     """Helper function to format the order snapshot for pretty printing."""
     lines = []
     for i, contract_details in enumerate(snapshot_body):
