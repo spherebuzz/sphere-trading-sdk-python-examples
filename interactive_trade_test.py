@@ -42,54 +42,70 @@ def on_trade_event_received(trade_data: sphere_sdk_types_pb2.TradeMessageDto):
         test_logger.info("Event Type: SNAPSHOT")
         snapshot_body = trade_data.body
         if snapshot_body:
-            pretty_details = format_trade_snapshot(snapshot_body) 
+            pretty_details = format_trade_message(snapshot_body) 
             test_logger.info(f"\n{pretty_details}")
         else:
             test_logger.info("Trade snapshot is empty.")
     else:
-        test_logger.info("Event Type:", event_type_str)
+        test_logger.info(f"Event Type: {event_type_str}")
         delta_body = trade_data.body
         if delta_body:
-            pretty_details = format_trade_snapshot(delta_body) 
+            pretty_details = format_trade_message(delta_body) 
             test_logger.info(f"\n{pretty_details}")
 
 
     test_logger.info("---------------------------------")
 
-def format_trade_snapshot(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) -> str:
-    """Helper function to format the trade snapshot for pretty printing."""
+def format_trade_message(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) -> str:
+    """
+    Helper function to format the trade message for pretty printing.
+    """
+    if not snapshot_body:
+        return "No trades to display."
+
     lines = []
+    label_width = 12 
+
     for i, trade_details in enumerate(snapshot_body):
+        if i > 0:
+            lines.append("")
+
+        lines.append(f"--- Trade {i+1}/{len(snapshot_body)} ---")
+
+        # --- Contract Details ---
         contract = trade_details.contract
-        price = trade_details.price
-
-        lines.append(f"--- Contract {i+1}/{len(snapshot_body)} ---")
-        
         inst_type_str = sphere_sdk_types_pb2.InstrumentType.Name(contract.instrument_type).replace('INSTRUMENT_TYPE_', '')
-
-        lines.append(f"  Instrument: {contract.instrument_name} ({inst_type_str})")
-        lines.append(f"  Expiry:     {contract.expiry}")
         
+        lines.append(f"  {'Instrument:':<{label_width}}{contract.instrument_name} ({inst_type_str})")
+        lines.append(f"  {'Expiry:':<{label_width}}{contract.expiry}")
+
+        # --- Legs (for spreads, strips, etc.) ---
         if contract.legs:
-            lines.append("  Legs:")
-            for leg in contract.legs:
-                lines.append(f"Expiry: {leg.expiry}")
-      
-                        
-        unit_str = sphere_sdk_types_pb2.Unit.Name(trade_details.price.units).replace('UNIT_', '')                
-        unit_period_str = sphere_sdk_types_pb2.UnitPeriod.Name(trade_details.price.unit_period).replace('UNIT_PERIOD_', '')
+            lines.append(f"  {'Legs:':<{label_width}}")
+            for j, leg in enumerate(contract.legs, 1):
+                side_str = sphere_sdk_types_pb2.SpreadSideType.Name(leg.spread_side).replace('SPREAD_SIDE_TYPE_', '')
+                instrument_name = leg.instrument_name or 'N/A'
+                expiry = leg.expiry or 'N/A'
+                lines.append(f"    - Leg {j} ({side_str}): {instrument_name} @ {expiry}")
 
-        lines.append(
-            f"    - ID: {trade_details.id} | "
-            f"Qty: {price.quantity:>10} @ "
-            f"Unit: {unit_str:>10} | "
-            f"Unit Period: {unit_period_str:>10} | "
-            f"Price: {price.per_price_unit:>8} | "
-            f"Updated: {trade_details.updated_time}"              
-        )
+        price = trade_details.price
+        unit_str = sphere_sdk_types_pb2.Unit.Name(price.units).replace('UNIT_', '')
+        unit_period_str = sphere_sdk_types_pb2.UnitPeriod.Name(price.unit_period).replace('UNIT_PERIOD_', '')
 
-        lines.append("-" * 25)
-        
+        # Combine quantity, unit, and unit period into one clear string
+        quantity_unit_str = f"{price.quantity}"
+        if unit_str != 'NONE':
+            quantity_unit_str += f" {unit_str}"
+            if unit_period_str not in ['NONE', 'TOTAL_VOLUME']:
+                quantity_unit_str += f"/{unit_period_str}"
+            elif unit_period_str == 'TOTAL_VOLUME':
+                quantity_unit_str += " (Total Volume)"
+
+        lines.append(f"  {'Trade ID:':<{label_width}}{trade_details.id}")
+        lines.append(f"  {'Price:':<{label_width}}{price.per_price_unit}")
+        lines.append(f"  {'Quantity:':<{label_width}}{quantity_unit_str}")
+        lines.append(f"  {'Time:':<{label_width}}{trade_details.created_time}")
+
     return "\n".join(lines)
 
 def main():
