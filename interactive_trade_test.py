@@ -100,11 +100,14 @@ def format_trade_message(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) -> 
                 quantity_unit_str += f"/{unit_period_str}"
             elif unit_period_str == 'TOTAL_VOLUME':
                 quantity_unit_str += " (Total Volume)"
+        
+        interest_type_str = sphere_sdk_types_pb2.InterestType.Name(trade_details.interest_type).replace('INTEREST_TYPE_', '')
 
         lines.append(f"  {'Trade ID:':<{label_width}}{trade_details.id}")
         lines.append(f"  {'Price:':<{label_width}}{price.per_price_unit}")
         lines.append(f"  {'Quantity:':<{label_width}}{quantity_unit_str}")
         lines.append(f"  {'Time:':<{label_width}}{trade_details.created_time}")
+        lines.append(f"  {'Interest:':<{label_width}}{interest_type_str}")
 
     return "\n".join(lines)
 
