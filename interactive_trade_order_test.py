@@ -4,6 +4,7 @@ import logging
 import getpass
 import time
 import threading
+import uuid
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass, field
@@ -292,7 +293,8 @@ class GhostTrader:
         try:
             trade_request = sphere_sdk_types_pb2.TradeOrderRequestDto(
                 id=real_order.id,
-                quantity=str(quantity)
+                quantity=str(quantity),
+                idempotency_key=str(uuid.uuid4())
             )
 
             self.sdk.trade_order(trade_request)

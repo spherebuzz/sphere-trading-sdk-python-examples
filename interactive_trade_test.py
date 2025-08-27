@@ -75,18 +75,30 @@ def format_trade_message(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) -> 
         # --- Contract Details ---
         contract = trade_details.contract
         inst_type_str = sphere_sdk_types_pb2.InstrumentType.Name(contract.instrument_type).replace('INSTRUMENT_TYPE_', '')
-        
+        expiry_type_str = sphere_sdk_types_pb2.ExpiryType.Name(contract.expiry_type).replace('EXPIRY_TYPE_', '')
+
         lines.append(f"  {'Instrument:':<{label_width}}{contract.instrument_name} ({inst_type_str})")
-        lines.append(f"  {'Expiry:':<{label_width}}{contract.expiry}")
+        lines.append(f"  {'Expiry:':<{label_width}}{contract.expiry} ({expiry_type_str})")
+
+        # --- Constituents ---
+        if contract.constituents:
+            lines.append(f"  {'Constituents:':<{label_width}}")
+            for const in contract.constituents:
+                lines.append(f"    - {const.expiry}")
 
         # --- Legs (for spreads, strips, etc.) ---
         if contract.legs:
             lines.append(f"  {'Legs:':<{label_width}}")
             for j, leg in enumerate(contract.legs, 1):
                 side_str = sphere_sdk_types_pb2.SpreadSideType.Name(leg.spread_side).replace('SPREAD_SIDE_TYPE_', '')
+                leg_expiry_type_str = sphere_sdk_types_pb2.LegExpiryType.Name(leg.expiry_type).replace('LEG_EXPIRY_TYPE_', '')
                 instrument_name = leg.instrument_name or 'N/A'
                 expiry = leg.expiry or 'N/A'
-                lines.append(f"    - Leg {j} ({side_str}): {instrument_name} @ {expiry}")
+                lines.append(f"    - Leg {j} ({side_str}): {instrument_name} @ {expiry} ({leg_expiry_type_str})")
+                if leg.constituents:
+                    lines.append(f"      {'Constituents:':<{label_width}}")
+                    for const in leg.constituents:
+                        lines.append(f"        - {const.expiry}")
 
         price = trade_details.price
         unit_str = sphere_sdk_types_pb2.Unit.Name(price.units).replace('UNIT_', '')

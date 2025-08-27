@@ -60,6 +60,7 @@ def on_order_event_received(order_data: sphere_sdk_types_pb2.OrderStacksDto):
 def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto]) -> str:
     """Helper function to format the order snapshot for pretty printing."""
     lines = []
+    label_width = 12
     for i, contract_details in enumerate(snapshot_body):
         contract = contract_details.contract
         orders = contract_details.orders
@@ -67,31 +68,50 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
         lines.append(f"--- Contract {i+1}/{len(snapshot_body)} ---")
 
         inst_type_str = sphere_sdk_types_pb2.InstrumentType.Name(contract.instrument_type).replace('INSTRUMENT_TYPE_', '')
+        expiry_type_str = sphere_sdk_types_pb2.ExpiryType.Name(contract.expiry_type).replace('EXPIRY_TYPE_', '')
         side_str = sphere_sdk_types_pb2.OrderSide.Name(contract.side).replace('ORDER_SIDE_', '')
 
-        lines.append(f"  Instrument: {contract.instrument_name} ({inst_type_str})")
-        lines.append(f"  Side:       {side_str}")
-        lines.append(f"  Expiry:     {contract.expiry}")
+        lines.append(f"  {'Instrument:':<{label_width}}{contract.instrument_name} ({inst_type_str})")
+        lines.append(f"  {'Expiry:':<{label_width}}{contract.expiry} ({expiry_type_str})")
+        lines.append(f"  {'Side:':<{label_width}}{side_str}")
+
+        if contract.constituents:
+            lines.append(f"  {'Constituents:':<{label_width}}")
+            for const in contract.constituents:
+                lines.append(f"    - {const.expiry}")
 
         if contract.legs:
-            lines.append("  Legs:")
-            for leg in contract.legs:
+            lines.append(f"  {'Legs:':<{label_width}}")
+            for j, leg in enumerate(contract.legs, 1):
                 side = sphere_sdk_types_pb2.SpreadSideType.Name(leg.spread_side).replace('SPREAD_SIDE_TYPE_', '')
-                lines.append(f"    - {side:<4} | Expiry: {leg.expiry}")
+                leg_expiry_type_str = sphere_sdk_types_pb2.LegExpiryType.Name(leg.expiry_type).replace('LEG_EXPIRY_TYPE_', '')
+                instrument_name = leg.instrument_name or 'N/A'
+                expiry = leg.expiry or 'N/A'
+                lines.append(f"    - Leg {j} ({side}): {instrument_name} @ {expiry} ({leg_expiry_type_str})")
+                if leg.constituents:
+                    lines.append(f"      {'Constituents:':<{label_width}}")
+                    for const in leg.constituents:
+                        lines.append(f"        - {const.expiry}")
 
         if orders:
             lines.append(f"  Orders ({len(orders)}):")
             for order in orders:
                 interest_type_str = sphere_sdk_types_pb2.InterestType.Name(order.interest_type).replace('INTEREST_TYPE_', '')
-                tradability_str = sphere_sdk_types_pb2.Tradability.Name(order.tradability).replace('TRADABILITY_', '')                
-                unit_str = sphere_sdk_types_pb2.Unit.Name(order.price.units).replace('UNIT_', '')                
+                tradability_str = sphere_sdk_types_pb2.Tradability.Name(order.tradability).replace('TRADABILITY_', '')
+                unit_str = sphere_sdk_types_pb2.Unit.Name(order.price.units).replace('UNIT_', '')
                 unit_period_str = sphere_sdk_types_pb2.UnitPeriod.Name(order.price.unit_period).replace('UNIT_PERIOD_', '')
+
+                quantity_details_str = f"{order.price.quantity}"
+                if unit_str != 'NONE':
+                    quantity_details_str += f" {unit_str}"
+                    if unit_period_str not in ['NONE', 'NOT_APPLICABLE', 'TOTAL_VOLUME']:
+                        quantity_details_str += f"/{unit_period_str}"
+                    elif unit_period_str == 'TOTAL_VOLUME':
+                        quantity_details_str += " (Total Volume)"
 
                 lines.append(
                     f"    - ID: {order.id} | "
-                    f"Qty: {order.price.quantity:>10} @ "
-                    f"Unit: {unit_str:>10} | "
-                    f"Unit Period: {unit_period_str:>10} | "
+                    f"Qty: {quantity_details_str:<30} | "
                     f"Price: {order.price.per_price_unit:>8} | "
                     f"Interest: {interest_type_str:<10} | "
                     f"Tradable: {tradability_str:<10} | "
