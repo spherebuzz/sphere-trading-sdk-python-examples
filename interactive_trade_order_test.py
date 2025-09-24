@@ -289,24 +289,24 @@ class GhostTrader:
             action_verb = "hit"
             target_str = "bid"
 
-        logger.info(f"--- {action_pp} the {target_str}: Trading {quantity} against real order ID: {real_order.id} ---")
+        logger.info(f"--- {action_pp} the {target_str}: Trading {quantity} against real order instance ID: {real_order.instance_id} ---")
         try:
             trade_request = sphere_sdk_types_pb2.TradeOrderRequestDto(
-                id=real_order.id,
+                order_instance_id=real_order.instance_id,
                 quantity=str(quantity),
                 idempotency_key=str(uuid.uuid4())
             )
 
             self.sdk.trade_order(trade_request)
 
-            logger.info(f"[SUCCESS] '{action_verb.capitalize()}' request for order ID {real_order.id} submitted successfully.")
+            logger.info(f"[SUCCESS] '{action_verb.capitalize()}' request for order instance ID {real_order.instance_id} submitted successfully.")
             return True
 
         except TradeOrderFailedError as e:
-            logger.error(f"[FAILURE] Failed to {action_verb} the {target_str} on order ID {real_order.id}. Reason: {e}")
+            logger.error(f"[FAILURE] Failed to {action_verb} the {target_str} on order instance ID {real_order.instance_id}. Reason: {e}")
             return False
         except Exception as e:
-            logger.error(f"[UNEXPECTED] An error occurred while {action_pp.lower()}ing the {target_str} on order ID {real_order.id}: {e}", exc_info=True)
+            logger.error(f"[UNEXPECTED] An error occurred while {action_pp.lower()}ing the {target_str} on order instance ID {real_order.instance_id}: {e}", exc_info=True)
             return False
 
 
