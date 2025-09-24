@@ -110,7 +110,7 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                         quantity_details_str += " (Total Volume)"
 
                 lines.append(
-                    f"    - ID: {order.id} | "
+                    f"    - ID: {order.id} | Instance ID: {order.instance_id} | "
                     f"Qty: {quantity_details_str:<30} | "
                     f"Price: {order.price.per_price_unit:>8} | "
                     f"Interest: {interest_type_str:<10} | "
