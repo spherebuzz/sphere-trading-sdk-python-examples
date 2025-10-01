@@ -102,7 +102,7 @@ class OrderUpdateSubmissionTool:
                 )
 
                 secondary_brokers_dtos = [
-                    sphere_sdk_types_pb2.OrderRequestBrokerDto(code=b.code)
+                    sphere_sdk_types_pb2.OrderRequestBrokerDto(code=b)
                     for b in secondary_broker_codes
                 ]
 
