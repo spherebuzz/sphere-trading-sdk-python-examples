@@ -118,6 +118,13 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                     f"Updated: {order.updated_time} | "
                     f"Stack Position: {order.stack_position}"
                 )
+
+                if order.parties:
+                    lines.append(
+                    f"Initiator Trader: {order.parties.initiator_trader.full_name} ({order.parties.initiator_trader.company_name}) | "
+                    f"Initiator Broker: {order.parties.initiator_broker.company_name}"
+                )
+
         else:
             lines.append("  (No active orders for this contract)")
         lines.append("-" * 25)

@@ -2,7 +2,6 @@ import sys
 import os
 import logging
 import getpass
-import time
 import uuid
 from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass, field
@@ -36,40 +35,6 @@ logging.basicConfig(
     format='[%(levelname)s] (%(name)s) %(asctime)s: %(message)s'
 )
 
-@dataclass
-class Broker:
-    """Represents a broker party."""
-    code: str
-
-@dataclass
-class NewOrderRequest:
-    """Represents a single order request to be submitted."""
-    instrument_name: str
-    expiry: str
-    side: sphere_sdk_types_pb2.OrderSide
-    per_price_unit: Decimal
-    quantity: Decimal
-    primary_broker: Broker
-    secondary_brokers: List[Broker] = field(default_factory=list)
-    clearing_options: List[str] = field(default_factory=list)
-
-    def __post_init__(self):
-        """
-        Normalizes key fields for case-insensitive matching.
-        """        
-        self.instrument_name = self.instrument_name.upper()
-        self.expiry = self.expiry.upper()
-
-    def __str__(self):
-        side_str = sphere_sdk_types_pb2.OrderSide.Name(self.side).replace('ORDER_SIDE_', '')
-        clearing_info = f"Clearing: {', '.join(self.clearing_options)}" if self.clearing_options else "No Clearing"
-        return (f"[{side_str}] {self.instrument_name} {self.expiry} | "
-                f"Price: {self.per_price_unit} | "
-                f"Qty: {self.quantity} | "
-                f"Primary Broker: {self.primary_broker.code} | "
-                f"{clearing_info}")
-
-
 class OrderSubmissionTool:
     """
     Manages interactive prompting for order details and submitting them to Sphere.
@@ -82,12 +47,6 @@ class OrderSubmissionTool:
             sdk_client: An initialized and logged-in instance of SphereTradingClientSDK.
         """
         self.sdk = sdk_client
-
-    def _prompt_for_broker(self, broker_type: str) -> Broker:
-        """Helper to prompt for broker details."""
-        print(f"--- {broker_type} Broker Details ---")
-        code = input(f"Enter {broker_type} Broker Code: ")
-        return Broker(code=code)
 
     def prompt_and_submit_orders(self):
         """Interactively prompts the user to create and submit new orders."""
@@ -110,13 +69,13 @@ class OrderSubmissionTool:
             quantity_str = input("Enter Quantity: ")
             per_price_unit_str = input("Enter Price (e.g., '100'): ")
 
-            primary_broker = self._prompt_for_broker("Primary")
+            primary_broker_code = input(f"Enter Primary Broker Code: ")
 
-            secondary_brokers = []
+            secondary_broker_codes = []
             while True:
                 add_secondary = input("Add a secondary broker? (yes/no): ").lower()
                 if add_secondary == 'yes':
-                    secondary_brokers.append(self._prompt_for_broker("Secondary"))
+                    secondary_broker_codes.append(input(f"Enter Secondary Broker Code: "))
                 else:
                     break
 
@@ -135,15 +94,38 @@ class OrderSubmissionTool:
                 if quantity <= 0:
                     raise ValueError("Quantity must be positive.")
 
-                new_order_request = NewOrderRequest(
-                    instrument_name=instrument_name,
-                    expiry=expiry,
+                idempotency_key = str(uuid.uuid4())
+
+                price_dto = sphere_sdk_types_pb2.OrderRequestPriceDto(
+                    per_price_unit=str(per_price_unit),
+                    quantity=str(quantity),
+                    ordered_clearing_options=[
+                        sphere_sdk_types_pb2.OrderRequestClearingOptionDto(code=code)
+                        for code in clearing_options
+                    ]
+                )
+
+                primary_broker_dto = sphere_sdk_types_pb2.OrderRequestBrokerDto(
+                    code=primary_broker_code
+                )
+
+                secondary_brokers_dtos = [
+                    sphere_sdk_types_pb2.OrderRequestBrokerDto(code=b)
+                    for b in secondary_broker_codes
+                ]
+
+                parties_dto = sphere_sdk_types_pb2.TraderOrderRequestPartiesDto(
+                    primary_broker=primary_broker_dto,
+                    secondary_brokers=secondary_brokers_dtos
+                )
+
+                new_order_request = sphere_sdk_types_pb2.TraderFlatOrderRequestDto(
+                    idempotency_key=idempotency_key,
                     side=side,
-                    quantity=quantity,
-                    per_price_unit=per_price_unit,
-                    primary_broker=primary_broker,
-                    secondary_brokers=secondary_brokers,
-                    clearing_options=clearing_options
+                    expiry=expiry,
+                    instrument_name=instrument_name,
+                    price=price_dto,
+                    parties=parties_dto
                 )
                 
                 logger.info(f"Prepared order: {new_order_request}")
@@ -160,58 +142,18 @@ class OrderSubmissionTool:
 
         logger.info("Finished submitting orders.")
 
-    def _create_sdk_order_request(self, order_req: NewOrderRequest) -> sphere_sdk_types_pb2.TraderFlatOrderRequestDto:
+    def _submit_order(self, sdk_order_request: sphere_sdk_types_pb2.TraderFlatOrderRequestDto):
         """
-        Converts a NewOrderRequest into an SDK TraderFlatOrderRequestDto.
+        Submit new order request.
         """
-        idempotency_key = str(uuid.uuid4())
-
-        price_dto = sphere_sdk_types_pb2.OrderRequestPriceDto(
-            per_price_unit=str(order_req.per_price_unit),
-            quantity=str(order_req.quantity),
-            ordered_clearing_options=[
-                sphere_sdk_types_pb2.OrderRequestClearingOptionDto(code=code)
-                for code in order_req.clearing_options
-            ]
-        )
-
-        primary_broker_dto = sphere_sdk_types_pb2.OrderRequestBrokerDto(
-            code=order_req.primary_broker.code
-        )
-
-        secondary_brokers_dtos = [
-            sphere_sdk_types_pb2.OrderRequestBrokerDto(code=b.code)
-            for b in order_req.secondary_brokers
-        ]
-
-        parties_dto = sphere_sdk_types_pb2.TraderOrderRequestPartiesDto(
-            primary_broker=primary_broker_dto,
-            secondary_brokers=secondary_brokers_dtos
-        )
-
-        sdk_order_request = sphere_sdk_types_pb2.TraderFlatOrderRequestDto(
-            idempotency_key=idempotency_key,
-            side=order_req.side,
-            expiry=order_req.expiry,
-            instrument_name=order_req.instrument_name,
-            price=price_dto,
-            parties=parties_dto
-        )
-        return sdk_order_request
-
-    def _submit_order(self, order_req: NewOrderRequest):
-        """
-        Converts the NewOrderRequest to an SDK DTO and submits it.
-        """
-        sdk_order_request = self._create_sdk_order_request(order_req)
         logger.info(f"Submitting order with idempotency_key: {sdk_order_request.idempotency_key}")
         
         try:
             orderResponse = self.sdk.create_trader_flat_order(sdk_order_request)
-            logger.info(f"Successfully submitted order. Order Response: {orderResponse}")
+            logger.info(f"Successfully submitted order. Order ID: {orderResponse.id}, Instance ID: {orderResponse.instance_id}")
         except CreateOrderFailedError as e:
-            logger.error(f"Failed to submit order for {order_req.instrument_name} {order_req.expiry} "
-                         f"({sphere_sdk_types_pb2.OrderSide.Name(order_req.side)} @ {order_req.per_price_unit}): {e}")
+            logger.error(f"Failed to submit order for {sdk_order_request.instrument_name} {sdk_order_request.expiry} "
+                         f"({sphere_sdk_types_pb2.OrderSide.Name(sdk_order_request.side)} @ {sdk_order_request.per_price_unit}): {e}")
             raise
         except Exception as e:
             logger.error(f"An unexpected error occurred while submitting order: {e}", exc_info=True)
