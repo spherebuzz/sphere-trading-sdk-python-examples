@@ -20,7 +20,7 @@ try:
         SDKInitializationError,
         LoginFailedError,
         TradingClientError,
-        CreateOrderFailedError
+        UpdateOrderFailedError
     )
     from sphere_sdk import sphere_sdk_types_pb2
 except ImportError as e:
@@ -35,37 +35,29 @@ logging.basicConfig(
     format='[%(levelname)s] (%(name)s) %(asctime)s: %(message)s'
 )
 
-class OrderSubmissionTool:
+class OrderUpdateSubmissionTool:
     """
-    Manages interactive prompting for order details and submitting them to Sphere.
+    Manages interactive prompting for order update details and submitting them to Sphere.
     """
     def __init__(self, sdk_client: SphereTradingClientSDK):
         """
-        Initializes the OrderSubmissionTool.
+        Initializes the OrderUpdateSubmissionTool.
 
         Args:
             sdk_client: An initialized and logged-in instance of SphereTradingClientSDK.
         """
         self.sdk = sdk_client
 
-    def prompt_and_submit_orders(self):
-        """Interactively prompts the user to create and submit new orders."""
-        logger.info("--- New Order Submission ---")
-        logger.info("Enter details for your orders. Type 'done' when finished.")
+    def prompt_and_submit_order_updates(self):
+        """Interactively prompts the user to update existing orders."""
+        logger.info("--- Update Order Submission ---")
+        logger.info("Enter details for your order updates. Type 'done' when finished.")
         while True:
-            instrument_name = input("\nEnter Instrument Name (e.g., 'Naphtha MOPJ') or 'done': ")
-            if instrument_name.lower() == 'done':
+            
+            order_instance_id = input("\nEnter Order Instance Id or 'done': ")
+            if order_instance_id.lower() == 'done':
                 break
-
-            expiry = input(f"Enter Expiry for {instrument_name} (e.g., 'Oct-25'): ")
-
-            side_str = ""
-            while side_str not in ['buy', 'sell']:
-                side_str = input("Enter Side ('buy' or 'sell'): ").lower()
-
-            side = (sphere_sdk_types_pb2.ORDER_SIDE_BID if side_str == 'buy'
-                    else sphere_sdk_types_pb2.ORDER_SIDE_ASK)
-
+                        
             quantity_str = input("Enter Quantity: ")
             per_price_unit_str = input("Enter Price (e.g., '100'): ")
 
@@ -91,7 +83,7 @@ class OrderSubmissionTool:
             try:
                 per_price_unit = Decimal(per_price_unit_str)
                 quantity = Decimal(quantity_str)
-                
+
                 idempotency_key = str(uuid.uuid4())
 
                 price_dto = sphere_sdk_types_pb2.OrderRequestPriceDto(
@@ -117,51 +109,48 @@ class OrderSubmissionTool:
                     secondary_brokers=secondary_brokers_dtos
                 )
 
-                new_order_request = sphere_sdk_types_pb2.TraderFlatOrderRequestDto(
+                new_order_request = sphere_sdk_types_pb2.TraderUpdateSpreadOrderRequestDto(
                     idempotency_key=idempotency_key,
-                    side=side,
-                    expiry=expiry,
-                    instrument_name=instrument_name,
+                    instance_id=order_instance_id,
                     price=price_dto,
                     parties=parties_dto
                 )
                 
-                logger.info(f"Prepared order: {new_order_request}")
+                logger.info(f"Prepared order update: {new_order_request}")
                 self._submit_order(new_order_request)
 
             except (InvalidOperation, ValueError) as e:
                 logger.error(f"Invalid input for price/quantity: {e}. Please try again.")
-            except CreateOrderFailedError as e:
-                logger.error(f"Failed to submit order: {e}")
+            except UpdateOrderFailedError as e:
+                logger.error(f"Failed to submit spread order update: {e}")
             except Exception as e:
-                logger.error(f"An unexpected error occurred during order creation: {e}", exc_info=True)
+                logger.error(f"An unexpected error occurred during order update: {e}", exc_info=True)
 
             print("-" * 20)
 
         logger.info("Finished submitting orders.")
 
-    def _submit_order(self, sdk_order_request: sphere_sdk_types_pb2.TraderFlatOrderRequestDto):
+    def _submit_order(self, sdk_order_request: sphere_sdk_types_pb2.TraderUpdateSpreadOrderRequestDto):
         """
-        Submit new order request.
+        Submit spread order update request.
         """
         logger.info(f"Submitting order with idempotency_key: {sdk_order_request.idempotency_key}")
         
         try:
-            orderResponse = self.sdk.create_trader_flat_order(sdk_order_request)
-            logger.info(f"Successfully submitted order. Order ID: {orderResponse.id}, Instance ID: {orderResponse.instance_id}")
-        except CreateOrderFailedError as e:
-            logger.error(f"Failed to submit order for {sdk_order_request.instrument_name} {sdk_order_request.expiry} "
-                         f"({sphere_sdk_types_pb2.OrderSide.Name(sdk_order_request.side)} @ {sdk_order_request.per_price_unit}): {e}")
+            orderResponse = self.sdk.update_trader_spread_order(sdk_order_request)
+            logger.info(f"Successfully submitted spread order update. Order ID: {orderResponse.id}, Instance ID: {orderResponse.instance_id}")
+        except UpdateOrderFailedError as e:
+            logger.error(f"Failed to update spread order with Instance ID: {sdk_order_request.instance_id} : {e}")
             raise
         except Exception as e:
-            logger.error(f"An unexpected error occurred while submitting order: {e}", exc_info=True)
+            logger.error(f"An unexpected error occurred while submitting order update: {e}", exc_info=True)
             raise
 
 def main():
     """
-    Main function to initialize the SDK, log in, and run the order submission tool.
+    Main function to initialize the SDK, log in, and run the order update submission tool.
     """
-    logger.info("Starting Sphere Interactive Order Creator...")
+    logger.info("Starting Sphere Interactive Order Updater...")
     sdk_instance = None
     try:
         sdk_instance = SphereTradingClientSDK()
@@ -172,8 +161,8 @@ def main():
         sdk_instance.login(username, password)
         logger.info(f"Login successful for user '{username}'.")
 
-        order_tool = OrderSubmissionTool(sdk_instance)
-        order_tool.prompt_and_submit_orders()
+        order_tool = OrderUpdateSubmissionTool(sdk_instance)
+        order_tool.prompt_and_submit_order_updates()
 
     except KeyboardInterrupt:
         logger.info("\nCtrl+C detected. Shutting down gracefully...")
@@ -187,7 +176,7 @@ def main():
             sdk_instance.logout()
             logger.info("Logout complete.")
 
-        logger.info("Sphere Interactive Order Creator has finished.")
+        logger.info("Sphere Interactive Order Updater has finished.")
 
 
 if __name__ == "__main__":

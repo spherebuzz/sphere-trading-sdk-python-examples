@@ -57,7 +57,8 @@ class OrderSubmissionTool:
             if instrument_name.lower() == 'done':
                 break
 
-            expiry = input(f"Enter Expiry for {instrument_name} (e.g., 'Oct-25'): ")
+            front_expiry = input(f"Enter Front Expiry for {instrument_name} (e.g., 'Oct-25'): ")
+            back_expiry = input(f"Enter Back Expiry for {instrument_name} (e.g., 'Oct-25'): ")
 
             side_str = ""
             while side_str not in ['buy', 'sell']:
@@ -91,7 +92,9 @@ class OrderSubmissionTool:
             try:
                 per_price_unit = Decimal(per_price_unit_str)
                 quantity = Decimal(quantity_str)
-                
+                if quantity <= 0:
+                    raise ValueError("Quantity must be positive.")
+
                 idempotency_key = str(uuid.uuid4())
 
                 price_dto = sphere_sdk_types_pb2.OrderRequestPriceDto(
@@ -117,10 +120,11 @@ class OrderSubmissionTool:
                     secondary_brokers=secondary_brokers_dtos
                 )
 
-                new_order_request = sphere_sdk_types_pb2.TraderFlatOrderRequestDto(
+                new_order_request = sphere_sdk_types_pb2.TraderStripOrderRequestDto(
                     idempotency_key=idempotency_key,
                     side=side,
-                    expiry=expiry,
+                    front_expiry=front_expiry,
+                    back_expiry=back_expiry,
                     instrument_name=instrument_name,
                     price=price_dto,
                     parties=parties_dto
@@ -140,18 +144,18 @@ class OrderSubmissionTool:
 
         logger.info("Finished submitting orders.")
 
-    def _submit_order(self, sdk_order_request: sphere_sdk_types_pb2.TraderFlatOrderRequestDto):
+    def _submit_order(self, sdk_order_request: sphere_sdk_types_pb2.TraderStripOrderRequestDto):
         """
         Submit new order request.
         """
         logger.info(f"Submitting order with idempotency_key: {sdk_order_request.idempotency_key}")
         
         try:
-            orderResponse = self.sdk.create_trader_flat_order(sdk_order_request)
+            orderResponse = self.sdk.create_trader_strip_order(sdk_order_request)
             logger.info(f"Successfully submitted order. Order ID: {orderResponse.id}, Instance ID: {orderResponse.instance_id}")
         except CreateOrderFailedError as e:
-            logger.error(f"Failed to submit order for {sdk_order_request.instrument_name} {sdk_order_request.expiry} "
-                         f"({sphere_sdk_types_pb2.OrderSide.Name(sdk_order_request.side)} @ {sdk_order_request.per_price_unit}): {e}")
+            logger.error(f"Failed to submit order for {sdk_order_request.instrument_name} {sdk_order_request.front_expiry} - {sdk_order_request.back_expiry} "
+                         f"({sphere_sdk_types_pb2.OrderSide.Name(sdk_order_request.side)} @ {sdk_order_request.price.per_price_unit}): {e}")
             raise
         except Exception as e:
             logger.error(f"An unexpected error occurred while submitting order: {e}", exc_info=True)

@@ -92,8 +92,6 @@ class OrderSubmissionTool:
             try:
                 per_price_unit = Decimal(per_price_unit_str)
                 quantity = Decimal(quantity_str)
-                if quantity <= 0:
-                    raise ValueError("Quantity must be positive.")
 
                 idempotency_key = str(uuid.uuid4())
 
