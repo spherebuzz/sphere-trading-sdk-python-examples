@@ -119,15 +119,30 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                     f"Stack Position: {order.stack_position}"
                 )
 
-                if order.parties:
-                    lines.append(
-                    f"Initiator Trader: {order.parties.initiator_trader.full_name} ({order.parties.initiator_trader.company_name}) | "
-                    f"Initiator Broker: {order.parties.initiator_broker.company_name}"
-                )
+                if order.HasField('parties'):
+                    parts = []
 
-        else:
-            lines.append("  (No active orders for this contract)")
-        lines.append("-" * 25)
+                    if order.parties.HasField('initiator_trader'):
+                        t = order.parties.initiator_trader
+                        if t.full_name or t.company_name:
+                            parts.append(f"Initiator Trader: {t.full_name} ({t.company_name})")
+
+                    if order.parties.HasField('initiator_broker'):
+                        b = order.parties.initiator_broker
+                        if b.company_name:
+                            parts.append(f"Initiator Broker: {b.company_name}")
+
+                    if order.parties.brokers:
+                        codes = [b.code for b in order.parties.brokers if b.code]
+                        if codes:
+                            broker_list_str = ", ".join(codes)
+                            parts.append(f"Brokers: [{broker_list_str}]")
+
+                    if parts:
+                        lines.append(" | ".join(parts))
+            else:
+                lines.append("  (No active orders for this contract)")
+            lines.append("-" * 25)
 
     return "\n".join(lines)
 
