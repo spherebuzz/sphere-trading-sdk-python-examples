@@ -140,9 +140,9 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
 
                     if parts:
                         lines.append(" | ".join(parts))
-            else:
-                lines.append("  (No active orders for this contract)")
-            lines.append("-" * 25)
+        else:
+            lines.append("  (No active orders for this contract)")
+        lines.append("-" * 25)
 
     return "\n".join(lines)
 
