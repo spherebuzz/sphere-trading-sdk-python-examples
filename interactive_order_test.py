@@ -122,6 +122,11 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                 if order.HasField('parties'):
                     parts = []
 
+                    if order.parties.HasField('indicative_sender'):                        
+                        s = order.parties.indicative_sender
+                        company_type_str = sphere_sdk_types_pb2.CompanyType.Name(s.company_type).replace('COMPANY_TYPE_', '')
+                        parts.append(f"Indicative Sender: {s.full_name} (Company: {s.company_name}, (Company Code: {s.company_code}, Type: {company_type_str})")
+
                     if order.parties.HasField('initiator_trader'):
                         t = order.parties.initiator_trader
                         if t.full_name or t.company_name:
