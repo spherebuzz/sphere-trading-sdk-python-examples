@@ -307,6 +307,19 @@ class OrderUpdateSubmissionTool:
             else:
                 print("Invalid choice. Please enter 1, 2, 3, 4, or 'exit'.")
 
+def on_order_event_received(order_data: sphere_sdk_types_pb2.OrderStacksDto):
+    """Callback to display incoming orders including price source."""
+    for stack in order_data.body:
+        for order in stack.orders:
+            interest_type_str = sphere_sdk_types_pb2.InterestType.Name(order.interest_type).replace('INTEREST_TYPE_', '')
+            price_source_str = sphere_sdk_types_pb2.PriceSource.Name(order.price_source).replace('PRICE_SOURCE_', '')
+            logger.info(
+                f"Order | ID: {order.id} | Instance: {order.instance_id} | "
+                f"Interest: {interest_type_str} | PriceSource: {price_source_str} | "
+                f"Price: {order.price.per_price_unit} | Qty: {order.price.quantity}"
+            )
+
+
 def main():
     """
     Main function to initialize the SDK, log in, and run the order update submission tool.
@@ -322,6 +335,9 @@ def main():
         sdk_instance.login(username, password)
         logger.info(f"Login successful for user '{username}'.")
 
+        sdk_instance.subscribe_to_order_events(on_order_event_received)
+        logger.info("Subscribed to order events. Orders will be displayed as they arrive (including price source).")
+
         order_tool = OrderUpdateSubmissionTool(sdk_instance)
         order_tool.run_interactive_order_updater()
 
@@ -333,6 +349,8 @@ def main():
         logger.error(f"An unexpected error occurred in the main loop: {e}", exc_info=True)
     finally:
         if sdk_instance and sdk_instance._is_logged_in:
+            if sdk_instance._user_order_callback:
+                sdk_instance.unsubscribe_from_order_events()
             logger.info("Logging out...")
             sdk_instance.logout()
             logger.info("Logout complete.")

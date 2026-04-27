@@ -97,6 +97,7 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
             lines.append(f"  Orders ({len(orders)}):")
             for order in orders:
                 interest_type_str = sphere_sdk_types_pb2.InterestType.Name(order.interest_type).replace('INTEREST_TYPE_', '')
+                price_source_str = sphere_sdk_types_pb2.PriceSource.Name(order.price_source).replace('PRICE_SOURCE_', '')
                 tradability_str = sphere_sdk_types_pb2.Tradability.Name(order.tradability).replace('TRADABILITY_', '')
                 unit_str = sphere_sdk_types_pb2.Unit.Name(order.price.units).replace('UNIT_', '')
                 unit_period_str = sphere_sdk_types_pb2.UnitPeriod.Name(order.price.unit_period).replace('UNIT_PERIOD_', '')
@@ -114,6 +115,7 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                     f"Qty: {quantity_details_str:<30} | "
                     f"Price: {order.price.per_price_unit:>8} | "
                     f"Interest: {interest_type_str:<10} | "
+                    f"PriceSource: {price_source_str:<20} | "
                     f"Tradable: {tradability_str:<10} | "
                     f"Updated: {order.updated_time} | "
                     f"Stack Position: {order.stack_position}"
