@@ -120,7 +120,8 @@ def format_trade_message(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) -> 
         lines.append(f"  {'Quantity:':<{label_width}}{quantity_unit_str}")
         lines.append(f"  {'Time:':<{label_width}}{trade_details.created_time}")
         lines.append(f"  {'Interest:':<{label_width}}{interest_type_str}")
-        lines.append(f"  {'Broker Code:':<{label_width}}{trade_details.broker.code}")
+        if hasattr(trade_details, 'broker'):
+            lines.append(f"  {'Broker Code:':<{label_width}}{trade_details.broker.code}")
 
     return "\n".join(lines)
 

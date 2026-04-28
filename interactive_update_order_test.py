@@ -312,7 +312,10 @@ def on_order_event_received(order_data: sphere_sdk_types_pb2.OrderStacksDto):
     for stack in order_data.body:
         for order in stack.orders:
             interest_type_str = sphere_sdk_types_pb2.InterestType.Name(order.interest_type).replace('INTEREST_TYPE_', '')
-            price_source_str = sphere_sdk_types_pb2.PriceSource.Name(order.price_source).replace('PRICE_SOURCE_', '')
+            if hasattr(sphere_sdk_types_pb2, 'PriceSource'):
+                price_source_str = sphere_sdk_types_pb2.PriceSource.Name(order.price_source).replace('PRICE_SOURCE_', '')
+            else:
+                price_source_str = str(getattr(order, 'price_source', ''))
             logger.info(
                 f"Order | ID: {order.id} | Instance: {order.instance_id} | "
                 f"Interest: {interest_type_str} | PriceSource: {price_source_str} | "

@@ -127,6 +127,7 @@ class OrderSubmissionTool:
         
         try:
             orderResponse = None
+            order_details = str(sdk_order_request)
             if isinstance(sdk_order_request, sphere_sdk_types_pb2.TraderFlatOrderRequestDto):
                 orderResponse = self.sdk.create_trader_flat_order(sdk_order_request)
                 order_details = f"{sdk_order_request.instrument_name} {sdk_order_request.expiry}"
