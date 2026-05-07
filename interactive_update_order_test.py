@@ -316,10 +316,12 @@ def on_order_event_received(order_data: sphere_sdk_types_pb2.OrderStacksDto):
                 price_source_str = sphere_sdk_types_pb2.PriceSource.Name(order.price_source).replace('PRICE_SOURCE_', '')
             else:
                 price_source_str = str(getattr(order, 'price_source', ''))
+            clearing_str = f" | Clearing: [{', '.join(order.clearing_company_codes)}]" if order.clearing_company_codes else ""
             logger.info(
                 f"Order | ID: {order.id} | Instance: {order.instance_id} | "
                 f"Interest: {interest_type_str} | PriceSource: {price_source_str} | "
                 f"Price: {order.price.per_price_unit} | Qty: {order.price.quantity}"
+                f"{clearing_str}"
             )
 
 

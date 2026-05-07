@@ -124,10 +124,10 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                     f"Stack Position: {order.stack_position}"
                 )
 
-                if order.HasField('parties'):
-                    parts = []
+                parts = []
 
-                    if order.parties.HasField('indicative_sender'):                        
+                if order.HasField('parties'):
+                    if order.parties.HasField('indicative_sender'):
                         s = order.parties.indicative_sender
                         company_type_str = sphere_sdk_types_pb2.CompanyType.Name(s.company_type).replace('COMPANY_TYPE_', '')
                         parts.append(f"Indicative Sender: {s.full_name} (Company: {s.company_name}, Company Code: {s.company_code}, Type: {company_type_str})")
@@ -148,8 +148,12 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                             broker_list_str = ", ".join(codes)
                             parts.append(f"Brokers: [{broker_list_str}]")
 
-                    if parts:
-                        lines.append(" | ".join(parts))
+                if order.clearing_company_codes:
+                    codes_str = ", ".join(order.clearing_company_codes)
+                    parts.append(f"Clearing: [{codes_str}]")
+
+                if parts:
+                    lines.append(" | ".join(parts))
         else:
             lines.append("  (No active orders for this contract)")
         lines.append("-" * 25)
