@@ -122,6 +122,10 @@ def format_trade_message(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) -> 
         lines.append(f"  {'Interest:':<{label_width}}{interest_type_str}")
         if hasattr(trade_details, 'broker'):
             lines.append(f"  {'Broker Code:':<{label_width}}{trade_details.broker.code}")
+        if trade_details.HasField('parties') and trade_details.parties.HasField('indicative_sender'):
+            s = trade_details.parties.indicative_sender
+            company_type_str = sphere_sdk_types_pb2.CompanyType.Name(s.company_type)
+            lines.append(f"  {'Sender:':<{label_width}}{s.full_name} (Company: {s.company_name}, Code: {s.company_code}, Type: {company_type_str})")
 
     return "\n".join(lines)
 
