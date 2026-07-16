@@ -32,7 +32,7 @@ except ImportError as e:
 
 logger = logging.getLogger("cancel_order_creator")
 logging.basicConfig(
-    level=logging.debug,
+    level=logging.DEBUG,
     format='[%(levelname)s] (%(name)s) %(asctime)s: %(message)s'
 )
 
@@ -90,7 +90,7 @@ class CancelOrderSubmissionTool:
             cancelOrderResponse = self.sdk.cancel_order(sdk_cancel_order_request)
             logger.info(f"Successfully submitted cancel order. Order Response: {cancelOrderResponse}")
         except CancelOrderFailedError as e:
-            logger.error(f"Failed to submit cancel order for {sdk_cancel_order_request.order_instance_id}: {e}")
+            logger.error(f"Failed to submit cancel order for {sdk_cancel_order_request.instance_id}: {e}")
             raise
         except Exception as e:
             logger.error(f"An unexpected error occurred while submitting cancel order: {e}", exc_info=True)
