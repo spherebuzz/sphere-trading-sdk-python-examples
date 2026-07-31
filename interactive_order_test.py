@@ -152,6 +152,9 @@ def format_order_stacks(snapshot_body: list[sphere_sdk_types_pb2.OrderStackDto])
                     codes_str = ", ".join(order.clearing_company_codes)
                     parts.append(f"Clearing: [{codes_str}]")
 
+                if order.HasField('message_id'):
+                    parts.append(f"Message ID: {order.message_id}")
+
                 if parts:
                     lines.append(" | ".join(parts))
         else:
