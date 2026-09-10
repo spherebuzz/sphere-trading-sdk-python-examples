@@ -116,6 +116,8 @@ def format_trade_message(snapshot_body: list[sphere_sdk_types_pb2.TradeDto]) -> 
         interest_type_str = sphere_sdk_types_pb2.InterestType.Name(trade_details.interest_type).replace('INTEREST_TYPE_', '')
 
         lines.append(f"  {'Trade ID:':<{label_width}}{trade_details.id}")
+        lines.append(f"  {'Order Instance ID:':<{label_width}}{trade_details.order_instance_id}")
+        lines.append(f"  {'Clearing Co:':<{label_width}}{trade_details.clearing_company_code}")
         lines.append(f"  {'Price:':<{label_width}}{price.per_price_unit}")
         lines.append(f"  {'Quantity:':<{label_width}}{quantity_unit_str}")
         lines.append(f"  {'Time:':<{label_width}}{trade_details.created_time}")
