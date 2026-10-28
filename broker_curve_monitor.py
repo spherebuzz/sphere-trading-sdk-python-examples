@@ -8,6 +8,8 @@ it, and where the value comes from:
     PROVIDER             the company's client curve, as its provider publishes it
     CUSTOM               an override entered by a user at the company in Broker Curve Manager
     CALCULATED_MIDPOINT  derived from the provider values and overrides
+    INDICATIVE_BID       the midpoint less half the desk's indicative width, after each flat midpoint
+    INDICATIVE_ASK       the midpoint plus half the desk's indicative width
 
 The curve is available to broker users with Broker Curve Manager enabled; for anyone else it is empty.
 Press Ctrl+C to log out and exit.
@@ -56,16 +58,24 @@ def _source_name(value):
         return f"UNKNOWN({value})"
 
 
+INDICATIVE_SIDES = {
+    sphere_sdk_types_pb2.CurveValueSource.CURVE_VALUE_SOURCE_INDICATIVE_BID: "bid",
+    sphere_sdk_types_pb2.CurveValueSource.CURVE_VALUE_SOURCE_INDICATIVE_ASK: "ask",
+}
+
+
 def curve_by_cell(points):
-    """{(instrument, expiry): (display value, source)}, keeping the order the SDK returned them in."""
+    """{(instrument, expiry, side): (display value, source)}, side being "mid", "bid" or "ask", keeping the order the
+    SDK returned them in."""
     return {
-        (point.contract.instrument_name, point.contract.expiry): (point.display_value, _source_name(point.source))
+        (point.contract.instrument_name, point.contract.expiry, INDICATIVE_SIDES.get(point.source, "mid")):
+            (point.display_value, _source_name(point.source))
         for point in points
     }
 
 
 def changes_between(previous, current):
-    """[(instrument, expiry, old, new)] for every cell that changed, appeared (old None) or went (new None).
+    """[(cell, old, new)] for every cell that changed, appeared (old None) or went (new None).
 
     old and new are (display value, source); a change of source alone counts, since it says the value now
     comes from somewhere else even where the number is the same.
@@ -74,20 +84,26 @@ def changes_between(previous, current):
     for cell, now in current.items():
         before = previous.get(cell)
         if before != now:
-            changes.append((cell[0], cell[1], before, now))
+            changes.append((cell, before, now))
     for cell, before in previous.items():
         if cell not in current:
-            changes.append((cell[0], cell[1], before, None))
+            changes.append((cell, before, None))
     return changes
 
 
-def format_change(instrument, expiry, old, new):
+def format_change(cell, old, new):
+    instrument, expiry = cell[0], _labelled_expiry(cell)
     if old is None:
         return f"{instrument} | {expiry} | new {new[0]} ({new[1]})"
     if new is None:
         return f"{instrument} | {expiry} | gone, was {old[0]} ({old[1]})"
     source = new[1] if old[1] == new[1] else f"{old[1]} -> {new[1]}"
     return f"{instrument} | {expiry} | {old[0]} -> {new[0]} ({source})"
+
+
+def _labelled_expiry(cell):
+    _, expiry, side = cell
+    return expiry if side == "mid" else f"{expiry} {side}"
 
 
 def print_curve(curve):
@@ -97,8 +113,8 @@ def print_curve(curve):
         return
 
     logger.info(f"Broker curve: {len(curve)} values.")
-    for (instrument, expiry), (value, source) in curve.items():
-        print(f"{instrument} | {expiry} | {value} ({source})")
+    for cell, (value, source) in curve.items():
+        print(f"{cell[0]} | {_labelled_expiry(cell)} | {value} ({source})")
 
 
 def monitor(sdk_instance):
